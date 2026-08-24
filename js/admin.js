@@ -95,16 +95,15 @@ function pintarGate(aviso = "") {
     <div class="adm-gate">
       <div id="adm-tema" class="adm-tema-bar"></div>
       <h1>Admin Muéstralo</h1>
-      <label class="adm-campo">App a administrar
-        <input id="gate-app" value="${esc(MslCliente.app)}" placeholder="slug del tenant, ej: demo">
-      </label>
+      <is-input id="gate-app" label="App a administrar" value="${esc(MslCliente.app)}"
+        placeholder="slug del tenant, ej: demo"></is-input>
       <msl-auth-form></msl-auth-form>
       <div id="gate-aviso">${aviso ? `<p class="msl-error">${esc(aviso)}</p>` : ""}</div>
     </div>`;
   montarControlesTema($("#adm-tema"), estado.cfg?.paletas || []);
   // El tenant se fija ANTES de cualquier login/registro del form.
   $("#gate-app").addEventListener("input", (e) => {
-    const app = e.target.value.trim();
+    const app = String(e.target.value ?? "").trim();
     if (app) MslCliente.configurar({ app });
   });
   $("#raiz").addEventListener("msl-login", () => {
@@ -130,22 +129,17 @@ function pintarShell() {
       <div id="adm-tema"></div>
       <is-button variant="text" id="btn-salir"><is-icon icon="mdi:logout"></is-icon> Salir</is-button>
     </header>
-    <nav class="adm-tabs">
+    <is-tab-group class="adm-tabs" id="adm-tabs" active="${ui.tab}">
       ${TABS.filter(([id]) => puede(ACC[id])).map(([id, icono, nombre]) => `
-        <button data-tab="${id}" aria-pressed="${ui.tab === id}">
+        <is-tab slot="nav" panel="${id}">
           <is-icon icon="${icono}"></is-icon> ${nombre}
-        </button>`).join("")}
-    </nav>
+        </is-tab>`).join("")}
+    </is-tab-group>
     <main class="adm-main" id="adm-main"></main>`;
   montarControlesTema($("#adm-tema"), estado.cfg?.paletas || []);
   $("#btn-salir").addEventListener("click", () => { MslCliente.logout(); pintarGate(); });
-  $(".adm-tabs").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-tab]");
-    if (!btn) return;
-    ui.tab = btn.dataset.tab;
-    for (const b of document.querySelectorAll(".adm-tabs button")) {
-      b.setAttribute("aria-pressed", String(b.dataset.tab === ui.tab));
-    }
+  $("#adm-tabs").addEventListener("is-tab-show", (e) => {
+    ui.tab = e.detail.name;
     pintarSeccion();
   });
   pintarSeccion();
@@ -173,21 +167,17 @@ function pintarSeccion() {
 async function secCatalogo() {
   $("#sec-cuerpo").innerHTML = `
     <div class="adm-barra">
-      <label>Buscar <input id="f-search" value="${esc(ui.prod.search)}" placeholder="nombre o descripción"></label>
-      <label>Estado
-        <select id="f-activo">
-          <option value="1" ${ui.prod.activo === "1" ? "selected" : ""}>Activos</option>
-          <option value="0" ${ui.prod.activo === "0" ? "selected" : ""}>Inactivos</option>
-        </select>
-      </label>
-      <label>Categoría <input id="f-categoria" value="${esc(ui.prod.categoria)}"></label>
-      <label>Ordenar por
-        <select id="f-sort">
-          ${["id", "nombre", "precio", "creado_en"].map((s) =>
-            `<option value="${s}" ${ui.prod.sort === s ? "selected" : ""}>${s}</option>`).join("")}
-        </select>
-      </label>
-      <label>Desc <input type="checkbox" id="f-desc" ${ui.prod.desc ? "checked" : ""}></label>
+      <is-input id="f-search" label="Buscar" value="${esc(ui.prod.search)}" placeholder="nombre o descripción"></is-input>
+      <is-select id="f-activo" label="Estado" value="${esc(ui.prod.activo)}">
+        <is-option value="1">Activos</is-option>
+        <is-option value="0">Inactivos</is-option>
+      </is-select>
+      <is-input id="f-categoria" label="Categoría" value="${esc(ui.prod.categoria)}"></is-input>
+      <is-select id="f-sort" label="Ordenar por" value="${esc(ui.prod.sort)}">
+        ${["id", "nombre", "precio", "creado_en"].map((s) =>
+          `<is-option value="${s}">${s}</is-option>`).join("")}
+      </is-select>
+      <is-checkbox id="f-desc" ${ui.prod.desc ? "checked" : ""}>Desc</is-checkbox>
       <is-button id="btn-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
       <is-button id="btn-nuevo" variant="text"><is-icon icon="mdi:plus"></is-icon> Nuevo</is-button>
     </div>
@@ -303,23 +293,26 @@ function pintarFormProducto(p) {
       <h3>${esNuevo ? "Nuevo producto" : `Editar producto #${p.id}`}</h3>
       <form class="adm-form" id="form-prod">
         <div class="adm-fila">
-          <label>Nombre <input name="nombre" required value="${esc(p.nombre || "")}"></label>
-          <label>Precio (pesos) <input name="precio" type="number" min="0" step="any" required
-            value="${p.precio != null ? p.precio / 100 : ""}"></label>
-          <label>Moneda <input name="moneda" value="${esc(p.moneda || "COP")}" maxlength="3"></label>
+          <is-input name="nombre" label="Nombre" required value="${esc(p.nombre || "")}"></is-input>
+          <is-input name="precio" type="number" min="0" step="any" required label="Precio (pesos)"
+            value="${p.precio != null ? p.precio / 100 : ""}"></is-input>
+          <is-input name="moneda" label="Moneda" value="${esc(p.moneda || "COP")}" maxlength="3"></is-input>
         </div>
         <div class="adm-fila">
-          <label>Stock <input name="stock" type="number" min="0" step="1" value="${p.stock ?? 0}"></label>
-          <label>Categoría <input name="categoria" value="${esc(p.categoria || "")}"></label>
-          ${esNuevo ? "" : `<label>Activo <input type="checkbox" name="activo" ${p.activo ? "checked" : ""}></label>`}
+          <is-input name="stock" type="number" min="0" step="1" label="Stock" value="${p.stock ?? 0}"></is-input>
+          <is-input name="categoria" label="Categoría" value="${esc(p.categoria || "")}"></is-input>
+          ${esNuevo ? "" : `<is-checkbox name="activo" ${p.activo ? "checked" : ""}>Activo</is-checkbox>`}
         </div>
-        <label>Descripción <textarea name="descripcion">${esc(p.descripcion || "")}</textarea></label>
-        <label>Imágenes (una URL por línea)
-          <textarea name="imagenes">${esc((p.imagenes || []).join("\n"))}</textarea></label>
-        <label>Variaciones (JSON)
-          <textarea name="variaciones">${esc(JSON.stringify(p.variaciones || {}, null, 2))}</textarea></label>
-        <label>Meta (JSON)
-          <textarea name="meta">${esc(JSON.stringify(p.meta || {}, null, 2))}</textarea></label>
+        <is-textarea name="descripcion" label="Descripción" rows="3"
+          value="${esc(p.descripcion || "")}"></is-textarea>
+        <msl-imagen-input id="prod-img" label="Subir imágenes" entidad="producto" multiple
+          ${p.id ? `entidad-id="${p.id}"` : ""}></msl-imagen-input>
+        <is-textarea name="imagenes" label="Imágenes (una URL por línea)" rows="3"
+          value="${esc((p.imagenes || []).join("\n"))}"></is-textarea>
+        <is-textarea name="variaciones" label="Variaciones (JSON)" rows="6"
+          value="${esc(JSON.stringify(p.variaciones || {}, null, 2))}"></is-textarea>
+        <is-textarea name="meta" label="Meta (JSON)" rows="4"
+          value="${esc(JSON.stringify(p.meta || {}, null, 2))}"></is-textarea>
         <div class="adm-fila">
           <is-button type="submit"><is-icon icon="mdi:content-save"></is-icon> Guardar</is-button>
           <is-button type="button" variant="text" id="btn-cancelar-prod">Cancelar</is-button>
@@ -373,13 +366,10 @@ function pintarFormProducto(p) {
 async function secPedidos() {
   $("#sec-cuerpo").innerHTML = `
     <div class="adm-barra">
-      <label>Estado
-        <select id="f-ped-estado">
-          <option value="">Todos</option>
-          ${ESTADOS_PEDIDO.map((s) =>
-            `<option value="${s}" ${ui.pedEstado === s ? "selected" : ""}>${s}</option>`).join("")}
-        </select>
-      </label>
+      <is-select id="f-ped-estado" label="Estado" value="${esc(ui.pedEstado || "")}">
+        <is-option value="">Todos</is-option>
+        ${ESTADOS_PEDIDO.map((s) => `<is-option value="${s}">${s}</is-option>`).join("")}
+      </is-select>
       <is-button id="btn-ped-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
     </div>
     <div id="ped-lista"><is-spinner></is-spinner></div>`;
@@ -407,28 +397,20 @@ async function cargarPedidos() {
       <div class="adm-pedido" data-codigo="${esc(p.codigo)}">
         <msl-pedido-card></msl-pedido-card>
         <div class="adm-pedido-acciones">
-          <label>Estado
-            <select data-campo="estado">
-              ${ESTADOS_PEDIDO.map((s) =>
-                `<option value="${s}" ${p.estado === s ? "selected" : ""}>${s}</option>`).join("")}
-            </select>
-          </label>
-          <label>Canal
-            <select data-campo="canal">
-              <option value="">—</option>
-              ${["whatsapp", "wompi"].map((c) =>
-                `<option value="${c}" ${p.canal_pago === c ? "selected" : ""}>${c}</option>`).join("")}
-            </select>
-          </label>
+          <is-select data-campo="estado" label="Estado" value="${esc(p.estado || "")}">
+            ${ESTADOS_PEDIDO.map((s) => `<is-option value="${s}">${s}</is-option>`).join("")}
+          </is-select>
+          <is-select data-campo="canal" label="Canal" value="${esc(p.canal_pago || "")}">
+            <is-option value="">—</is-option>
+            ${["whatsapp", "wompi"].map((c) => `<is-option value="${c}">${c}</is-option>`).join("")}
+          </is-select>
           <is-button data-x="guardar" variant="text"><is-icon icon="mdi:content-save"></is-icon> Estado</is-button>
-          <label>Monto (pesos) <input data-campo="monto" type="number" min="0" step="any"
-            value="${(p.total ?? 0) / 100}"></label>
-          <label>Método
-            <select data-campo="metodo">
-              ${METODOS_PAGO.map((m) => `<option value="${m}">${m}</option>`).join("")}
-            </select>
-          </label>
-          <label>Referencia <input data-campo="referencia" placeholder="opcional"></label>
+          <is-input data-campo="monto" type="number" min="0" step="any" label="Monto (pesos)"
+            value="${(p.total ?? 0) / 100}"></is-input>
+          <is-select data-campo="metodo" label="Método" value="${esc(METODOS_PAGO[0] || "")}">
+            ${METODOS_PAGO.map((m) => `<is-option value="${m}">${m}</is-option>`).join("")}
+          </is-select>
+          <is-input data-campo="referencia" label="Referencia" placeholder="opcional"></is-input>
           <is-button data-x="pagar"><is-icon icon="mdi:cash-plus"></is-icon> Registrar pago</is-button>
           <div class="adm-ped-aviso"></div>
         </div>
@@ -475,20 +457,15 @@ async function cargarPedidos() {
 async function secPagos() {
   $("#sec-cuerpo").innerHTML = `
     <div class="adm-barra">
-      <label>Método
-        <select id="f-pago-metodo">
-          <option value="">Todos</option>
-          ${METODOS_PAGO.map((m) =>
-            `<option value="${m}" ${ui.pago.metodo === m ? "selected" : ""}>${m}</option>`).join("")}
-        </select>
-      </label>
-      <label>Estado
-        <select id="f-pago-estado">
-          <option value="">Todos</option>
-          ${["registrado", "confirmado", "rechazado"].map((s) =>
-            `<option value="${s}" ${ui.pago.estado === s ? "selected" : ""}>${s}</option>`).join("")}
-        </select>
-      </label>
+      <is-select id="f-pago-metodo" label="Método" value="${esc(ui.pago.metodo || "")}">
+        <is-option value="">Todos</is-option>
+        ${METODOS_PAGO.map((m) => `<is-option value="${m}">${m}</is-option>`).join("")}
+      </is-select>
+      <is-select id="f-pago-estado" label="Estado" value="${esc(ui.pago.estado || "")}">
+        <is-option value="">Todos</is-option>
+        ${["registrado", "confirmado", "rechazado"].map((s) =>
+          `<is-option value="${s}">${s}</is-option>`).join("")}
+      </is-select>
       <is-button id="btn-pago-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
     </div>
     <div id="pago-lista"><is-spinner></is-spinner></div>`;
@@ -593,22 +570,26 @@ async function secApariencia() {
       <h3>Configuración del tenant</h3>
       <form class="adm-form" id="form-cfg">
         <div class="adm-fila">
-          <label>Nombre <input name="nombre" required value="${esc(cfg.nombre || "")}"></label>
-          <label>WhatsApp soporte <input name="whatsapp_soporte" value="${esc(cfg.whatsapp_soporte || "")}" placeholder="573001112233"></label>
+          <is-input name="nombre" label="Nombre" required value="${esc(cfg.nombre || "")}"></is-input>
+          <is-input name="whatsapp_soporte" type="tel" label="WhatsApp soporte"
+            value="${esc(cfg.whatsapp_soporte || "")}" placeholder="573001112233"></is-input>
         </div>
         <div class="adm-fila">
-          <label>DNS personalizado <input name="dns_personalizado" value="${esc(cfg.dns_personalizado || "")}" placeholder="mitienda.com"></label>
-          <label>Plantilla activa <input name="plantilla_activa" value="${esc(cfg.plantilla_activa || "catalogo")}"></label>
-          <label>Vigencia suscripción <input name="vigencia_suscripcion" type="date"
-            title="La config pública no la expone: déjala vacía para no tocarla."></label>
+          <is-input name="dns_personalizado" label="DNS personalizado"
+            value="${esc(cfg.dns_personalizado || "")}" placeholder="mitienda.com"></is-input>
+          <is-input name="plantilla_activa" label="Plantilla activa"
+            value="${esc(cfg.plantilla_activa || "catalogo")}"></is-input>
+          <is-input name="vigencia_suscripcion" type="date" label="Vigencia suscripción"
+            hint="La config pública no la expone: déjala vacía para no tocarla."></is-input>
         </div>
-        <label>Variables CSS (tema del tenant)
+        <div>
+          <p class="adm-leyenda">Variables CSS (tema del tenant)</p>
           <div id="css-vars"></div>
           <is-button type="button" variant="text" id="btn-add-var">
             <is-icon icon="mdi:plus"></is-icon> Agregar variable</is-button>
-        </label>
-        <label>Meta (JSON)
-          <textarea name="meta">${esc(JSON.stringify(cfg.meta || {}, null, 2))}</textarea></label>
+        </div>
+        <is-textarea name="meta" label="Meta (JSON)" rows="4"
+          value="${esc(JSON.stringify(cfg.meta || {}, null, 2))}"></is-textarea>
         <div class="adm-fila">
           <is-button type="submit"><is-icon icon="mdi:content-save"></is-icon> Guardar</is-button>
         </div>
@@ -622,8 +603,8 @@ async function secApariencia() {
     const fila = document.createElement("div");
     fila.className = "adm-par";
     fila.innerHTML = `
-      <input data-k placeholder="--primario" value="${esc(k)}">
-      <input data-v placeholder="#6d28d9" value="${esc(v)}">
+      <is-input data-k placeholder="--primario" value="${esc(k)}" aria-label="Variable CSS"></is-input>
+      <is-input data-v placeholder="#6d28d9" value="${esc(v)}" aria-label="Valor"></is-input>
       <is-button variant="text" type="button" data-quitar><is-icon icon="mdi:close"></is-icon></is-button>`;
     fila.querySelector("[data-quitar]").addEventListener("click", () => fila.remove());
     vars.appendChild(fila);

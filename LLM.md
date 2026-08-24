@@ -60,6 +60,25 @@ Pagos, Métricas del tenant y Apariencia (variables e identidad).
 verificador de `muestralo-app/scripts/verifica-js.mjs`. Chequea sintaxis **como
 módulo ESM**: `node --check` sobre un `.js` parsea como CommonJS y da falsos OK.
 
+## Gobernanza (aplica a los cuatro repos)
+
+- **Commits: autor único `Jeff-Aporta`.** Prohibidos los trailers de coautoría
+  (`Co-authored-by:`). El historial refleja autoría individual.
+- **Índice de propiedad:** `tests/_propiedad.json` (ignorado por git) lleva
+  `author` / `notTouched`. `author` vacío = todo el repo es de Jeff-Aporta.
+  Nunca modificar lo listado en `notTouched` sin preguntar primero.
+- **Comentarios caveman en español**, una línea, `//`. Prohibidos `/* */` y
+  `/** */` multilínea. En CSS los `/* */` también van cortos y sin relleno
+  (`/* margen safe-area iOS */`, no una frase explicativa). Regla del corpus
+  InSoft `comments-caveman-es`: obligatoria y universal, incluye JSDoc.
+- **Cero vestigios legacy:** nada de código comentado ni capas antiguas.
+- **Higiene:** lo temporal y de operación vive en carpetas ignoradas
+  (`scripts/`, `tests/`, `logs/`).
+- **Antes de decidir cómo se hace algo en InSoft, consultar el RAG**
+  (`python C:\ContaPyme\RAG\rag.py preguntar "..."`), incluido el dominio
+  `guideagents-jeffrey` para preferencias del desarrollador. Citar la ruta que
+  devuelva. "No está indexado" es respuesta válida; inventar no lo es.
+
 ## Ver también
 
 - `muestralo-app/LLM.md` — el kit completo y sus convenciones.
