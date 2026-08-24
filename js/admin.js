@@ -1,6 +1,6 @@
 // Panel admin Muéstralo: todo el render vive aquí.
 import { cargarKit } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-loader.js";
-import { MslCliente } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-cliente.js";
+import { MslCliente, puede, cargarPermisos } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-cliente.js";
 import { aplicarTema, dinero } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-tema.js";
 
 // ------------------------------------------------------------- utilidades
@@ -57,17 +57,35 @@ const ui = {
 
 // ------------------------------------------------------------------- boot
 
+// Acción SEG = id del endpoint. El admin se pinta según permisos, no roles.
+const ACC = {
+  productos: "POST:/api/productos",
+  pedidos: "QUERY:/api/pedidos",
+  pagos: "QUERY:/api/pagos",
+  metricas: "QUERY:/api/metricas",
+  config: "PUT:/api/config",
+  archivos: "POST:/api/archivos",
+};
+
 async function boot() {
+  // ?app=slug fija el tenant de entrada (enlace directo desde la consola matriz).
+  const appUrl = new URLSearchParams(location.search).get("app");
+  if (appUrl) MslCliente.configurar({ app: appUrl.trim() });
   await cargarKit();
   aplicarTema(); // Tema del tenant en :root.
   if (!MslCliente.token) return pintarGate();
+  await cargarPermisos();
+  if (!TABS.some(([id]) => puede(ACC[id]))) {
+    MslCliente.logout();
+    return pintarGate("Esta cuenta no administra este tenant.");
+  }
   pintarShell();
 }
 
 // -------------------------------------------------------------- gate auth
 
 // Sin token: selector de tenant + form de acceso.
-function pintarGate() {
+function pintarGate(aviso = "") {
   $("#raiz").innerHTML = `
     <div class="adm-gate">
       <h1>Admin Muéstralo</h1>
@@ -75,17 +93,16 @@ function pintarGate() {
         <input id="gate-app" value="${esc(MslCliente.app)}" placeholder="slug del tenant, ej: demo">
       </label>
       <msl-auth-form></msl-auth-form>
-      <div id="gate-aviso"></div>
+      <div id="gate-aviso">${aviso ? `<p class="msl-error">${esc(aviso)}</p>` : ""}</div>
     </div>`;
   // El tenant se fija ANTES de cualquier login/registro del form.
   $("#gate-app").addEventListener("input", (e) => {
     const app = e.target.value.trim();
     if (app) MslCliente.configurar({ app });
   });
-  $("#raiz").addEventListener("msl-login", (e) => {
-    // msl-auth-form ya llamó MslCliente.login; aquí exigimos PROPIETARIO o DEV.
-    const roles = e.detail?.roles ?? [e.detail?.rol];
-    if (!roles.includes("PROPIETARIO") && !roles.includes("DEV")) {
+  $("#raiz").addEventListener("msl-login", () => {
+    // El login ya trajo el mapa de permisos: si no administra nada, fuera.
+    if (!TABS.some(([id]) => puede(ACC[id]))) {
       MslCliente.logout();
       $("#gate-aviso").innerHTML = `<p class="msl-error">Esta cuenta no administra este tenant.</p>`;
       return;
@@ -97,6 +114,8 @@ function pintarGate() {
 // ------------------------------------------------------------------ shell
 
 function pintarShell() {
+  // La pestaña activa siempre es una que la sesión tenga permitida.
+  if (!puede(ACC[ui.tab])) ui.tab = (TABS.find(([id]) => puede(ACC[id])) ?? [])[0] ?? ui.tab;
   $("#raiz").innerHTML = `
     <header class="adm-top">
       <h1><is-icon icon="mdi:store-cog"></is-icon> Admin · ${esc(MslCliente.app)}</h1>
@@ -104,7 +123,7 @@ function pintarShell() {
       <is-button variante="texto" id="btn-salir"><is-icon icon="mdi:logout"></is-icon> Salir</is-button>
     </header>
     <nav class="adm-tabs">
-      ${TABS.map(([id, icono, nombre]) => `
+      ${TABS.filter(([id]) => puede(ACC[id])).map(([id, icono, nombre]) => `
         <button data-tab="${id}" aria-pressed="${ui.tab === id}">
           <is-icon icon="${icono}"></is-icon> ${nombre}
         </button>`).join("")}
@@ -294,6 +313,15 @@ function pintarFormProducto(p) {
         <div id="form-prod-aviso"></div>
       </form>
     </div>`;
+  // El uploader escribe en el textarea: una sola fuente al guardar.
+  const uploader = $("#prod-img");
+  if (uploader) {
+    uploader.valor = p.imagenes || [];
+    uploader.addEventListener("msl-cambio", (e) => {
+      $("#form-prod").imagenes.value = e.detail.urls.join("
+");
+    });
+  }
   $("#btn-cancelar-prod").addEventListener("click", () => {
     ui.editando = null;
     $("#prod-form").innerHTML = "";
