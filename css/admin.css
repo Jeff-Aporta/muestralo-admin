@@ -219,6 +219,12 @@ msl-pedido-card footer { display: flex; justify-content: space-between; align-it
 
 /* Gate de sesión */
 .adm-gate { max-width: 22rem; margin: 4rem auto; padding: 0 1rem; }
+.adm-campo { display: grid; gap: 0.3rem; font-weight: 600; margin-bottom: 0.8rem; }
+.adm-campo input {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--borde, #d1d5db);
+  border-radius: 8px;
+}
 
 /* Acciones pequeñas en tabla */
 .adm-acciones { display: flex; gap: 0.4rem; }

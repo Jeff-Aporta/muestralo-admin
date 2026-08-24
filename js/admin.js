@@ -1,7 +1,7 @@
 // Panel admin Muéstralo: todo el render vive aquí.
-import { cargarKit } from "../../app/cdn/msl-loader.js";
-import { MslCliente } from "../../app/cdn/msl-cliente.js";
-import { aplicarTema, dinero } from "../../app/cdn/msl-tema.js";
+import { cargarKit } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-loader.js";
+import { MslCliente } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-cliente.js";
+import { aplicarTema, dinero } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-tema.js";
 
 // ------------------------------------------------------------- utilidades
 
@@ -66,19 +66,28 @@ async function boot() {
 
 // -------------------------------------------------------------- gate auth
 
-// Sin token: solo form de acceso.
+// Sin token: selector de tenant + form de acceso.
 function pintarGate() {
   $("#raiz").innerHTML = `
     <div class="adm-gate">
       <h1>Admin Muéstralo</h1>
+      <label class="adm-campo">App a administrar
+        <input id="gate-app" value="${esc(MslCliente.app)}" placeholder="slug del tenant, ej: demo">
+      </label>
       <msl-auth-form></msl-auth-form>
       <div id="gate-aviso"></div>
     </div>`;
+  // El tenant se fija ANTES de cualquier login/registro del form.
+  $("#gate-app").addEventListener("input", (e) => {
+    const app = e.target.value.trim();
+    if (app) MslCliente.configurar({ app });
+  });
   $("#raiz").addEventListener("msl-login", (e) => {
-    // msl-auth-form ya llamó MslCliente.login; aquí solo exigimos rol.
-    if (e.detail?.rol !== "admin") {
+    // msl-auth-form ya llamó MslCliente.login; aquí exigimos PROPIETARIO o DEV.
+    const roles = e.detail?.roles ?? [e.detail?.rol];
+    if (!roles.includes("PROPIETARIO") && !roles.includes("DEV")) {
       MslCliente.logout();
-      $("#gate-aviso").innerHTML = `<p class="msl-error">Esta cuenta no es admin del tenant.</p>`;
+      $("#gate-aviso").innerHTML = `<p class="msl-error">Esta cuenta no administra este tenant.</p>`;
       return;
     }
     pintarShell();
