@@ -1,23 +1,19 @@
-/* Admin Muéstralo: layout del panel. Colores llegan de css_vars del tenant. */
-
-:root {
-  --primario: #6d28d9;
-  --fondo: #f6f4fb;
-  --superficie: #ffffff;
-  --texto: #221c35;
-  --borde: #e2dcf0;
-  --peligro: #b91c1c;
-  --ok: #15803d;
-}
+/* Admin Muéstralo: layout del panel.
+ *
+ * Sin vocabulario de color propio: todo sale de los tokens --is-* de
+ * is-webcomponents, que la paleta del tenant repinta (GET /tema/…css).
+ * Los estilos de los componentes msl-* NO van aquí: viven en msl-kit.css,
+ * que carga el propio kit. Aquí solo el layout del panel.
+ */
 
 /* Base */
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--fondo, #f6f4fb);
-  color: var(--texto, #221c35);
-  font-family: system-ui, sans-serif;
+  background: var(--is-bg);
+  color: var(--is-text);
+  font-family: var(--is-sans, system-ui, sans-serif);
 }
 
 /* Cabecera y tabs */
@@ -26,14 +22,14 @@ body {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  background: var(--superficie, #fff);
-  border-bottom: 1px solid var(--borde, #e2dcf0);
+  background: var(--is-bg-elev);
+  border-bottom: 1px solid var(--is-border-soft);
 }
 
 .adm-top h1 {
   font-size: 1.1rem;
   margin: 0;
-  color: var(--primario, #6d28d9);
+  color: var(--is-accent);
 }
 
 .adm-top .adm-spacer { flex: 1; }
@@ -42,17 +38,17 @@ body {
   display: flex;
   gap: 0.25rem;
   padding: 0.5rem 1rem;
-  background: var(--superficie, #fff);
-  border-bottom: 1px solid var(--borde, #e2dcf0);
+  background: var(--is-bg-elev);
+  border-bottom: 1px solid var(--is-border-soft);
   overflow-x: auto;
 }
 
 .adm-tabs button {
   border: 0;
   background: transparent;
-  color: var(--texto, #221c35);
+  color: var(--is-text);
   padding: 0.5rem 0.9rem;
-  border-radius: 0.5rem;
+  border-radius: var(--is-radius-sm);
   cursor: pointer;
   font: inherit;
   display: inline-flex;
@@ -62,8 +58,8 @@ body {
 }
 
 .adm-tabs button[aria-pressed="true"] {
-  background: var(--primario, #6d28d9);
-  color: #fff;
+  background: var(--is-accent);
+  color: var(--is-on-brand, #fff);
 }
 
 /* Contenido */
@@ -86,18 +82,18 @@ body {
 .adm-form textarea {
   font: inherit;
   padding: 0.45rem 0.6rem;
-  border: 1px solid var(--borde, #e2dcf0);
-  border-radius: 0.5rem;
-  background: var(--superficie, #fff);
-  color: var(--texto, #221c35);
+  border: 1px solid var(--is-border-soft);
+  border-radius: var(--is-radius-sm);
+  background: var(--is-bg-elev);
+  color: var(--is-text);
 }
 
 /* Tablas */
 .adm-tabla {
   width: 100%;
   border-collapse: collapse;
-  background: var(--superficie, #fff);
-  border-radius: 0.75rem;
+  background: var(--is-bg-elev);
+  border-radius: var(--is-radius);
   overflow: hidden;
 }
 
@@ -105,20 +101,20 @@ body {
 .adm-tabla td {
   text-align: left;
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--borde, #e2dcf0);
+  border-bottom: 1px solid var(--is-border-soft);
   font-size: 0.9rem;
   vertical-align: top;
 }
 
-.adm-tabla th { background: var(--fondo, #f6f4fb); font-size: 0.8rem; }
+.adm-tabla th { background: var(--is-bg); font-size: 0.8rem; }
 
 .adm-tabla tr.inactivo { opacity: 0.55; }
 
 /* Tarjetas y formularios */
 .adm-card {
-  background: var(--superficie, #fff);
-  border: 1px solid var(--borde, #e2dcf0);
-  border-radius: 0.75rem;
+  background: var(--is-bg-elev);
+  border: 1px solid var(--is-border-soft);
+  border-radius: var(--is-radius);
   padding: 1rem;
   margin-bottom: 1rem;
 }
@@ -141,38 +137,15 @@ body {
   margin-bottom: 1rem;
 }
 
-msl-metrica-card .msl-metrica {
-  background: var(--superficie, #fff);
-  border: 1px solid var(--borde, #e2dcf0);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  align-items: flex-start;
-}
 
-msl-metrica-card is-icon { color: var(--primario, #6d28d9); font-size: 1.4rem; }
 
-msl-metrica-card strong { font-size: 1.4rem; }
 
-msl-metrica-card small { color: color-mix(in srgb, var(--texto, #221c35) 65%, transparent); }
 
 /* Pedidos */
-msl-pedido-card .msl-pedido {
-  background: var(--superficie, #fff);
-  border: 1px solid var(--borde, #e2dcf0);
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
 
-msl-pedido-card header { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.5rem; }
 
-msl-pedido-card ul { margin: 0.5rem 0; padding-left: 1.2rem; }
 
-msl-pedido-card li small { display: block; opacity: 0.7; }
 
-msl-pedido-card footer { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
 .adm-pedido { margin-bottom: 1rem; }
 
@@ -182,8 +155,8 @@ msl-pedido-card footer { display: flex; justify-content: space-between; align-it
   gap: 0.5rem;
   align-items: end;
   padding: 0.6rem 1rem;
-  background: var(--fondo, #f6f4fb);
-  border: 1px solid var(--borde, #e2dcf0);
+  background: var(--is-bg);
+  border: 1px solid var(--is-border-soft);
   border-top: 0;
   border-radius: 0 0 0.75rem 0.75rem;
   margin-top: -1rem;
@@ -197,21 +170,13 @@ msl-pedido-card footer { display: flex; justify-content: space-between; align-it
 .adm-par input { flex: 1; }
 
 /* Errores y avisos */
-.msl-error {
-  color: var(--peligro, #b91c1c);
-  background: color-mix(in srgb, var(--peligro, #b91c1c) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--peligro, #b91c1c) 35%, transparent);
-  padding: 0.6rem 0.8rem;
-  border-radius: 0.5rem;
-  font-size: 0.9rem;
-}
 
 .adm-ok {
-  color: var(--ok, #15803d);
-  background: color-mix(in srgb, var(--ok, #15803d) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ok, #15803d) 35%, transparent);
+  color: var(--is-color-success);
+  background: color-mix(in srgb, var(--is-color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--is-color-success) 35%, transparent);
   padding: 0.6rem 0.8rem;
-  border-radius: 0.5rem;
+  border-radius: var(--is-radius-sm);
   font-size: 0.9rem;
 }
 

@@ -1,7 +1,7 @@
 // Panel admin Muéstralo: todo el render vive aquí.
 import { cargarKit } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-loader.js";
 import { MslCliente, puede, cargarPermisos } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-cliente.js";
-import { aplicarTema, dinero } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-tema.js";
+import { aplicarTema, montarControlesTema, dinero } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-tema.js";
 
 // ------------------------------------------------------------- utilidades
 
@@ -47,6 +47,9 @@ const TABS = [
   ["apariencia", "mdi:palette", "Apariencia"],
 ];
 
+// Config del tenant en memoria (paletas de marca para los controles de tema).
+const estado = { cfg: null };
+
 const ui = {
   tab: "catalogo",
   prod: { search: "", activo: "1", categoria: "", sort: "id", desc: false, offset: 0, limit: 20 },
@@ -72,7 +75,8 @@ async function boot() {
   const appUrl = new URLSearchParams(location.search).get("app");
   if (appUrl) MslCliente.configurar({ app: appUrl.trim() });
   await cargarKit();
-  aplicarTema(); // Tema del tenant en :root.
+  // Identidad del tenant: paleta de marca + claro/oscuro, como en su tienda.
+  estado.cfg = await aplicarTema();
   if (!MslCliente.token) return pintarGate();
   await cargarPermisos();
   if (!TABS.some(([id]) => puede(ACC[id]))) {
@@ -120,7 +124,8 @@ function pintarShell() {
     <header class="adm-top">
       <h1><is-icon icon="mdi:store-cog"></is-icon> Admin · ${esc(MslCliente.app)}</h1>
       <span class="adm-spacer"></span>
-      <is-button variante="texto" id="btn-salir"><is-icon icon="mdi:logout"></is-icon> Salir</is-button>
+      <div id="adm-tema"></div>
+      <is-button variant="text" id="btn-salir"><is-icon icon="mdi:logout"></is-icon> Salir</is-button>
     </header>
     <nav class="adm-tabs">
       ${TABS.filter(([id]) => puede(ACC[id])).map(([id, icono, nombre]) => `
@@ -129,6 +134,7 @@ function pintarShell() {
         </button>`).join("")}
     </nav>
     <main class="adm-main" id="adm-main"></main>`;
+  montarControlesTema($("#adm-tema"), estado.cfg?.paletas || []);
   $("#btn-salir").addEventListener("click", () => { MslCliente.logout(); pintarGate(); });
   $(".adm-tabs").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-tab]");
@@ -180,7 +186,7 @@ async function secCatalogo() {
       </label>
       <label>Desc <input type="checkbox" id="f-desc" ${ui.prod.desc ? "checked" : ""}></label>
       <is-button id="btn-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
-      <is-button id="btn-nuevo" variante="texto"><is-icon icon="mdi:plus"></is-icon> Nuevo</is-button>
+      <is-button id="btn-nuevo" variant="text"><is-icon icon="mdi:plus"></is-icon> Nuevo</is-button>
     </div>
     <div id="prod-form"></div>
     <div id="prod-lista"><is-spinner></is-spinner></div>
@@ -234,8 +240,8 @@ async function cargarProductos() {
                 <td>${esc(p.categoria || "—")}</td>
                 <td><is-badge>${p.activo ? "activo" : "inactivo"}</is-badge></td>
                 <td class="adm-acciones">
-                  <is-button variante="texto" data-editar="${p.id}" title="Editar"><is-icon icon="mdi:pencil"></is-icon></is-button>
-                  <is-button variante="texto" data-borrar="${p.id}" title="Desactivar"><is-icon icon="mdi:delete"></is-icon></is-button>
+                  <is-button variant="text" data-editar="${p.id}" title="Editar"><is-icon icon="mdi:pencil"></is-icon></is-button>
+                  <is-button variant="text" data-borrar="${p.id}" title="Desactivar"><is-icon icon="mdi:delete"></is-icon></is-button>
                 </td>
               </tr>`).join("")}
           </tbody>
@@ -244,10 +250,10 @@ async function cargarProductos() {
     // Paginación: total llega en pagina (forma defensiva).
     const total = Number(pagina?.total ?? pagina?.n ?? 0);
     $("#prod-pagin").innerHTML = `
-      <is-button variante="texto" id="pg-ant" ${ui.prod.offset === 0 ? "disabled" : ""}>
+      <is-button variant="text" id="pg-ant" ${ui.prod.offset === 0 ? "disabled" : ""}>
         <is-icon icon="mdi:chevron-left"></is-icon> Anterior</is-button>
       <small>${total ? `${ui.prod.offset + 1}–${ui.prod.offset + results.length} de ${total}` : ""}</small>
-      <is-button variante="texto" id="pg-sig" ${results.length < ui.prod.limit ? "disabled" : ""}>
+      <is-button variant="text" id="pg-sig" ${results.length < ui.prod.limit ? "disabled" : ""}>
         Siguiente <is-icon icon="mdi:chevron-right"></is-icon></is-button>`;
     $("#pg-ant").addEventListener("click", () => {
       ui.prod.offset = Math.max(0, ui.prod.offset - ui.prod.limit);
@@ -308,7 +314,7 @@ function pintarFormProducto(p) {
           <textarea name="meta">${esc(JSON.stringify(p.meta || {}, null, 2))}</textarea></label>
         <div class="adm-fila">
           <is-button type="submit"><is-icon icon="mdi:content-save"></is-icon> Guardar</is-button>
-          <is-button type="button" variante="texto" id="btn-cancelar-prod">Cancelar</is-button>
+          <is-button type="button" variant="text" id="btn-cancelar-prod">Cancelar</is-button>
         </div>
         <div id="form-prod-aviso"></div>
       </form>
@@ -405,7 +411,7 @@ async function cargarPedidos() {
                 `<option value="${c}" ${p.canal_pago === c ? "selected" : ""}>${c}</option>`).join("")}
             </select>
           </label>
-          <is-button data-x="guardar" variante="texto"><is-icon icon="mdi:content-save"></is-icon> Estado</is-button>
+          <is-button data-x="guardar" variant="text"><is-icon icon="mdi:content-save"></is-icon> Estado</is-button>
           <label>Monto (pesos) <input data-campo="monto" type="number" min="0" step="any"
             value="${(p.total ?? 0) / 100}"></label>
           <label>Método
@@ -585,7 +591,7 @@ async function secApariencia() {
         </div>
         <label>Variables CSS (tema del tenant)
           <div id="css-vars"></div>
-          <is-button type="button" variante="texto" id="btn-add-var">
+          <is-button type="button" variant="text" id="btn-add-var">
             <is-icon icon="mdi:plus"></is-icon> Agregar variable</is-button>
         </label>
         <label>Meta (JSON)
@@ -605,7 +611,7 @@ async function secApariencia() {
     fila.innerHTML = `
       <input data-k placeholder="--primario" value="${esc(k)}">
       <input data-v placeholder="#6d28d9" value="${esc(v)}">
-      <is-button variante="texto" type="button" data-quitar><is-icon icon="mdi:close"></is-icon></is-button>`;
+      <is-button variant="text" type="button" data-quitar><is-icon icon="mdi:close"></is-icon></is-button>`;
     fila.querySelector("[data-quitar]").addEventListener("click", () => fila.remove());
     vars.appendChild(fila);
   };
