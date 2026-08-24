@@ -1,16 +1,18 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light" data-palette="contapyme" class="theme-light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin · Muéstralo</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Jeff-Aporta/is-webcomponents@main/dist/cdn/is-base.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Jeff-Aporta/is-webcomponents@main/dist/cdn/palettes.min.css">
+  <link data-is-css="base" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Jeff-Aporta/is-webcomponents@main/dist/cdn/is-base.min.css">
+  <link data-is-css="paletas" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Jeff-Aporta/is-webcomponents@main/dist/cdn/palettes.min.css">
   <link rel="stylesheet" href="css/admin.css">
+  <script>window.MSL_CDN = new URL("../app/cdn/", location.href).href.replace(/\/+$/, "");</script>
+  <script src="../app/cdn/msl-boot.js"></script>
 </head>
 <body>
-  <!-- Shell mínimo: todo el render vive en js/admin.js -->
   <div id="raiz"></div>
+  <is-toast></is-toast>
   <script type="module" src="js/admin.js"></script>
 </body>
 </html>

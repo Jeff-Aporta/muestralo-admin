@@ -1,7 +1,8 @@
 // Panel admin Muéstralo: todo el render vive aquí.
-import { cargarKit } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-loader.js";
-import { MslCliente, puede, cargarPermisos } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-cliente.js";
-import { aplicarTema, montarControlesTema, dinero } from "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn/msl-tema.js";
+const KIT = String(window.MSL_CDN || "https://cdn.jsdelivr.net/gh/Jeff-Aporta/muestralo-app@main/cdn").replace(/\/+$/, "");
+const { cargarKit } = await import(`${KIT}/msl-loader.js`);
+const { MslCliente, puede, cargarPermisos } = await import(`${KIT}/msl-cliente.js`);
+const { aplicarTema, montarControlesTema, dinero } = await import(`${KIT}/msl-tema.js`);
 
 // ------------------------------------------------------------- utilidades
 
@@ -92,6 +93,7 @@ async function boot() {
 function pintarGate(aviso = "") {
   $("#raiz").innerHTML = `
     <div class="adm-gate">
+      <div id="adm-tema" class="adm-tema-bar"></div>
       <h1>Admin Muéstralo</h1>
       <label class="adm-campo">App a administrar
         <input id="gate-app" value="${esc(MslCliente.app)}" placeholder="slug del tenant, ej: demo">
@@ -99,6 +101,7 @@ function pintarGate(aviso = "") {
       <msl-auth-form></msl-auth-form>
       <div id="gate-aviso">${aviso ? `<p class="msl-error">${esc(aviso)}</p>` : ""}</div>
     </div>`;
+  montarControlesTema($("#adm-tema"), estado.cfg?.paletas || []);
   // El tenant se fija ANTES de cualquier login/registro del form.
   $("#gate-app").addEventListener("input", (e) => {
     const app = e.target.value.trim();
@@ -219,8 +222,8 @@ function filtroProductos() {
 async function cargarProductos() {
   const lista = $("#prod-lista");
   lista.innerHTML = `<is-spinner></is-spinner>`;
-  try {
-    const { results, pagina } = await MslCliente.productos(filtroProductos());
+  // Pinta con lo cacheado y se rehace solo si el servidor trae algo distinto.
+  const pintar = ({ results, pagina }) => {
     if (!results.length) {
       lista.innerHTML = `<p class="adm-vacio">Sin productos con este filtro.</p>`;
     } else {
@@ -280,6 +283,11 @@ async function cargarProductos() {
         } catch (err) { mostrarError("#sec-aviso", err); }
       }
     };
+  };
+  try {
+    await MslCliente.productos.vivo(filtroProductos(), pintar, {
+      onError: (e) => mostrarError("#sec-aviso", e),
+    });
   } catch (e) {
     lista.innerHTML = "";
     mostrarError("#sec-aviso", e);
@@ -389,7 +397,8 @@ async function cargarPedidos() {
   try {
     const filtro = { sort: "id", desc: true, limit: 50 };
     if (ui.pedEstado) filtro.eq = { estado: ui.pedEstado };
-    const { results: pedidos } = await MslCliente.pedidos(filtro);
+    // Caché primero; se repinta solo si el servidor difiere.
+    await MslCliente.pedidos.vivo(filtro, ({ results: pedidos }) => {
     if (!pedidos.length) {
       lista.innerHTML = `<p class="adm-vacio">Sin pedidos con este filtro.</p>`;
       return;
@@ -454,6 +463,7 @@ async function cargarPedidos() {
         } catch (e) { aviso.innerHTML = `<p class="msl-error">${esc(e.message)}</p>`; }
       });
     }
+    }, { onError: (e) => mostrarError("#sec-aviso", e) });
   } catch (e) {
     lista.innerHTML = "";
     mostrarError("#sec-aviso", e);
@@ -500,7 +510,7 @@ async function cargarPagos() {
     if (ui.pago.estado) eq.estado = ui.pago.estado;
     const filtro = { sort: "id", desc: true, limit: 50 };
     if (Object.keys(eq).length) filtro.eq = eq;
-    const { results: pagos } = await MslCliente.pagos(filtro);
+    await MslCliente.pagos.vivo(filtro, ({ results: pagos }) => {
     if (!pagos.length) {
       lista.innerHTML = `<p class="adm-vacio">Sin pagos con este filtro.</p>`;
       return;
@@ -524,6 +534,7 @@ async function cargarPagos() {
             </tr>`).join("")}
         </tbody>
       </table>`;
+    }, { onError: (e) => mostrarError("#sec-aviso", e) });
   } catch (e) {
     lista.innerHTML = "";
     mostrarError("#sec-aviso", e);
@@ -533,7 +544,8 @@ async function cargarPagos() {
 // --------------------------------------------------------------- métricas
 
 async function secMetricas() {
-  const m = await MslCliente.metricas();
+  // Las cifras aparecen al instante con lo último conocido y se corrigen solas.
+  await MslCliente.metricas.vivo({}, async (m) => {
   // Nombres del top: un fetch por producto, tolerante a borrados.
   const top = await Promise.all((m.productos_top || []).map(async (t) => {
     const p = await MslCliente.producto(t.producto_id).catch(() => null);
@@ -569,6 +581,7 @@ async function secMetricas() {
         </tbody>
       </table>
     </div>`;
+  }, { onError: (e) => mostrarError("#sec-aviso", e) });
 }
 
 // -------------------------------------------------------------- apariencia

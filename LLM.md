@@ -9,6 +9,7 @@ solo tiene composición: si algo es reutilizable, va al kit, no aquí.
 | Necesidad | Usa | Dónde vive |
 |---|---|---|
 | Llamar a la API | `MslCliente` | `muestralo-app/cdn/msl-cliente.js` |
+| Listar sin espera en blanco | `MslCliente.<lectura>.vivo(filtro, pintar)` | mismo archivo (caché IndexedDB) |
 | Saber si se puede hacer algo | `puede(accion)` / `cargarPermisos()` | mismo archivo |
 | Tema y paleta del tenant | `aplicarTema()`, `montarControlesTema()` | `cdn/msl-tema.js` |
 | Subir imágenes | `<msl-imagen-input>` | `cdn/components/` |
@@ -19,6 +20,13 @@ solo tiene composición: si algo es reutilizable, va al kit, no aquí.
 
 `css/admin.css` solo debe tener lo específico del panel (rejilla, barra de
 filtros, tablas). Todo estilo de un componente `msl-*` va en `msl-kit.css`.
+
+## Listados con caché
+
+Las secciones del panel usan la variante `.vivo`: la tabla aparece con lo
+último conocido y se rehace **solo** si el servidor devuelve algo distinto.
+Las mutaciones (crear, editar, borrar, registrar pago) invalidan solas lo que
+tocaron, así que tras guardar se ve el dato nuevo, no el viejo.
 
 ## Permisos: nada de roles quemados
 

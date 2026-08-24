@@ -183,11 +183,13 @@ body {
 .adm-vacio { text-align: center; padding: 2rem; opacity: 0.6; }
 
 /* Gate de sesión */
+.adm-tema-bar { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+
 .adm-gate { max-width: 22rem; margin: 4rem auto; padding: 0 1rem; }
 .adm-campo { display: grid; gap: 0.3rem; font-weight: 600; margin-bottom: 0.8rem; }
 .adm-campo input {
   padding: 0.55rem 0.8rem;
-  border: 1px solid var(--borde, #d1d5db);
+  border: 1px solid var(--is-border);
   border-radius: 8px;
 }
 
