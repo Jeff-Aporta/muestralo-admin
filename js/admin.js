@@ -318,8 +318,7 @@ function pintarFormProducto(p) {
   if (uploader) {
     uploader.valor = p.imagenes || [];
     uploader.addEventListener("msl-cambio", (e) => {
-      $("#form-prod").imagenes.value = e.detail.urls.join("
-");
+      $("#form-prod").imagenes.value = e.detail.urls.join("\n");
     });
   }
   $("#btn-cancelar-prod").addEventListener("click", () => {
