@@ -384,7 +384,7 @@ async function cargarPedidos() {
   try {
     const filtro = { sort: "id", desc: true, limit: 50 };
     if (ui.pedEstado) filtro.eq = { estado: ui.pedEstado };
-    const pedidos = await MslCliente.pedidos(filtro);
+    const { results: pedidos } = await MslCliente.pedidos(filtro);
     if (!pedidos.length) {
       lista.innerHTML = `<p class="adm-vacio">Sin pedidos con este filtro.</p>`;
       return;
@@ -495,7 +495,7 @@ async function cargarPagos() {
     if (ui.pago.estado) eq.estado = ui.pago.estado;
     const filtro = { sort: "id", desc: true, limit: 50 };
     if (Object.keys(eq).length) filtro.eq = eq;
-    const pagos = await MslCliente.pagos(filtro);
+    const { results: pagos } = await MslCliente.pagos(filtro);
     if (!pagos.length) {
       lista.innerHTML = `<p class="adm-vacio">Sin pagos con este filtro.</p>`;
       return;
