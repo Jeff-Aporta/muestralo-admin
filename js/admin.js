@@ -48,6 +48,29 @@ const TABS = [
   ["apariencia", "mdi:palette", "Apariencia"],
 ];
 
+const SEC = {
+  catalogo: ["Catálogo", "Referencias, precio y stock."],
+  pedidos: ["Pedidos", "Estados, canal y registro de cobro."],
+  pagos: ["Pagos", "Cobros registrados y su estado."],
+  metricas: ["Métricas", "Tráfico, conversión e interés."],
+  apariencia: ["Apariencia", "Nombre, WhatsApp y datos del tenant."],
+};
+
+// Marca html[data-app] y quita paleta huérfana si el tenant no declara ninguna.
+function aplicarIdentidad() {
+  const html = document.documentElement;
+  html.dataset.app = MslCliente.app || "";
+  if (!(estado.cfg?.paletas || []).length) html.removeAttribute("data-palette");
+}
+
+function htmlVacio(icono, titulo, texto) {
+  return `<div class="adm-vacio">
+    <span class="adm-vacio-icono"><is-icon icon="${icono}"></is-icon></span>
+    <strong>${esc(titulo)}</strong>
+    <p>${esc(texto)}</p>
+  </div>`;
+}
+
 // Config del tenant en memoria (paletas de marca para los controles de tema).
 const estado = { cfg: null };
 
@@ -78,6 +101,7 @@ async function boot() {
   await cargarKit();
   // Identidad del tenant: paleta de marca + claro/oscuro, como en su tienda.
   estado.cfg = await aplicarTema();
+  aplicarIdentidad();
   if (!MslCliente.token) return pintarGate();
   await cargarPermisos();
   if (!TABS.some(([id]) => puede(ACC[id]))) {
@@ -91,20 +115,27 @@ async function boot() {
 
 // Sin token: selector de tenant + form de acceso.
 function pintarGate(aviso = "") {
+  aplicarIdentidad();
   $("#raiz").innerHTML = `
-    <div class="adm-gate">
-      <div id="adm-tema" class="adm-tema-bar"></div>
-      <h1>Admin Muéstralo</h1>
-      <is-input id="gate-app" label="App a administrar" value="${esc(MslCliente.app)}"
-        placeholder="slug del tenant, ej: demo"></is-input>
-      <msl-auth-form></msl-auth-form>
-      <div id="gate-aviso">${aviso ? `<p class="msl-error">${esc(aviso)}</p>` : ""}</div>
+    <div class="adm-escena">
+      <div class="adm-gate adm-vidrio">
+        <div id="adm-tema" class="adm-tema-bar"></div>
+        <div class="adm-gate-marca">
+          <span class="adm-marca-icono"><is-icon icon="mdi:store-cog"></is-icon></span>
+          <p class="adm-kicker">Muéstralo</p>
+          <h1>Panel de administración</h1>
+          <p class="adm-gate-sub">Catálogo, pedidos, cobros y marca del tenant.</p>
+        </div>
+        <is-input id="gate-app" label="App a administrar" value="${esc(MslCliente.app)}"
+          placeholder="slug del tenant, ej: demo"></is-input>
+        <msl-auth-form></msl-auth-form>
+        <div id="gate-aviso">${aviso ? `<p class="msl-error">${esc(aviso)}</p>` : ""}</div>
+      </div>
     </div>`;
   montarControlesTema($("#adm-tema"), estado.cfg?.paletas || []);
-  // El tenant se fija ANTES de cualquier login/registro del form.
   $("#gate-app").addEventListener("input", (e) => {
     const app = String(e.target.value ?? "").trim();
-    if (app) MslCliente.configurar({ app });
+    if (app) { MslCliente.configurar({ app }); aplicarIdentidad(); }
   });
   $("#raiz").addEventListener("msl-login", () => {
     // El login ya trajo el mapa de permisos: si no administra nada, fuera.
@@ -120,16 +151,23 @@ function pintarGate(aviso = "") {
 // ------------------------------------------------------------------ shell
 
 function pintarShell() {
-  // La pestaña activa siempre es una que la sesión tenga permitida.
+  aplicarIdentidad();
   if (!puede(ACC[ui.tab])) ui.tab = (TABS.find(([id]) => puede(ACC[id])) ?? [])[0] ?? ui.tab;
+  const titulo = esc(estado.cfg?.nombre || MslCliente.app);
   $("#raiz").innerHTML = `
-    <header class="adm-top">
-      <h1><is-icon icon="mdi:store-cog"></is-icon> Admin · ${esc(MslCliente.app)}</h1>
+    <header class="adm-top adm-vidrio">
+      <div class="adm-marca">
+        <span class="adm-marca-icono"><is-icon icon="mdi:store-cog"></is-icon></span>
+        <div>
+          <p class="adm-kicker">Admin · ${esc(MslCliente.app)}</p>
+          <h1>${titulo}</h1>
+        </div>
+      </div>
       <span class="adm-spacer"></span>
       <div id="adm-tema"></div>
       <is-button variant="text" id="btn-salir"><is-icon icon="mdi:logout"></is-icon> Salir</is-button>
     </header>
-    <is-tab-group class="adm-tabs" id="adm-tabs" active="${ui.tab}">
+    <is-tab-group class="adm-tabs adm-vidrio" id="adm-tabs" active="${ui.tab}">
       ${TABS.filter(([id]) => puede(ACC[id])).map(([id, icono, nombre]) => `
         <is-tab slot="nav" panel="${id}">
           <is-icon icon="${icono}"></is-icon> ${nombre}
@@ -148,7 +186,14 @@ function pintarShell() {
 // Despacha la sección activa.
 function pintarSeccion() {
   const main = $("#adm-main");
-  main.innerHTML = `<div id="sec-aviso"></div><div id="sec-cuerpo"><is-spinner></is-spinner></div>`;
+  const [h, sub] = SEC[ui.tab] || ["", ""];
+  main.innerHTML = `
+    <header class="adm-sec-cabeza">
+      <h2>${h}</h2>
+      <p>${sub}</p>
+    </header>
+    <div id="sec-aviso"></div>
+    <div id="sec-cuerpo"><is-spinner></is-spinner></div>`;
   const secciones = {
     catalogo: secCatalogo,
     pedidos: secPedidos,
@@ -166,20 +211,22 @@ function pintarSeccion() {
 
 async function secCatalogo() {
   $("#sec-cuerpo").innerHTML = `
-    <div class="adm-barra">
-      <is-input id="f-search" label="Buscar" value="${esc(ui.prod.search)}" placeholder="nombre o descripción"></is-input>
-      <is-select id="f-activo" label="Estado" value="${esc(ui.prod.activo)}">
+    <div class="adm-barra adm-vidrio adm-barra-cat">
+      <is-input full-width id="f-search" label="Buscar" value="${esc(ui.prod.search)}" placeholder="nombre o descripción"></is-input>
+      <is-select full-width id="f-activo" label="Estado" value="${esc(ui.prod.activo)}">
         <is-option value="1">Activos</is-option>
         <is-option value="0">Inactivos</is-option>
       </is-select>
-      <is-input id="f-categoria" label="Categoría" value="${esc(ui.prod.categoria)}"></is-input>
-      <is-select id="f-sort" label="Ordenar por" value="${esc(ui.prod.sort)}">
+      <is-input full-width id="f-categoria" label="Categoría" value="${esc(ui.prod.categoria)}"></is-input>
+      <is-select full-width id="f-sort" label="Ordenar por" value="${esc(ui.prod.sort)}">
         ${["id", "nombre", "precio", "creado_en"].map((s) =>
           `<is-option value="${s}">${s}</is-option>`).join("")}
       </is-select>
-      <is-checkbox id="f-desc" ${ui.prod.desc ? "checked" : ""}>Desc</is-checkbox>
-      <is-button id="btn-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
-      <is-button id="btn-nuevo" variant="text"><is-icon icon="mdi:plus"></is-icon> Nuevo</is-button>
+      <div class="adm-barra-acciones">
+        <is-checkbox id="f-desc" ${ui.prod.desc ? "checked" : ""}>Desc</is-checkbox>
+        <is-button id="btn-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
+        <is-button id="btn-nuevo" variant="text"><is-icon icon="mdi:plus"></is-icon> Nuevo</is-button>
+      </div>
     </div>
     <div id="prod-form"></div>
     <div id="prod-lista"><is-spinner></is-spinner></div>
@@ -215,9 +262,10 @@ async function cargarProductos() {
   // Pinta con lo cacheado y se rehace solo si el servidor trae algo distinto.
   const pintar = ({ results, pagina }) => {
     if (!results.length) {
-      lista.innerHTML = `<p class="adm-vacio">Sin productos con este filtro.</p>`;
+      lista.innerHTML = htmlVacio("mdi:package-variant-closed", "Sin productos", "Cambia el filtro o crea uno con Nuevo.");
     } else {
       lista.innerHTML = `
+        <div class="adm-tabla-caja adm-vidrio">
         <table class="adm-tabla">
           <thead><tr>
             <th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th>
@@ -238,7 +286,8 @@ async function cargarProductos() {
                 </td>
               </tr>`).join("")}
           </tbody>
-        </table>`;
+        </table>
+        </div>`;
     }
     // Paginación: total llega en pagina (forma defensiva).
     const total = Number(pagina?.total ?? pagina?.n ?? 0);
@@ -289,31 +338,31 @@ function pintarFormProducto(p) {
   ui.editando = p;
   const esNuevo = !p.id;
   $("#prod-form").innerHTML = `
-    <div class="adm-card">
+    <div class="adm-card adm-vidrio">
       <h3>${esNuevo ? "Nuevo producto" : `Editar producto #${p.id}`}</h3>
       <form class="adm-form" id="form-prod">
-        <div class="adm-fila">
-          <is-input name="nombre" label="Nombre" required value="${esc(p.nombre || "")}"></is-input>
-          <is-input name="precio" type="number" min="0" step="any" required label="Precio (pesos)"
+        <div class="adm-fila adm-fila-3">
+          <is-input full-width name="nombre" label="Nombre" required value="${esc(p.nombre || "")}"></is-input>
+          <is-input full-width name="precio" type="number" min="0" step="any" required label="Precio (pesos)"
             value="${p.precio != null ? p.precio / 100 : ""}"></is-input>
-          <is-input name="moneda" label="Moneda" value="${esc(p.moneda || "COP")}" maxlength="3"></is-input>
+          <is-input full-width name="moneda" label="Moneda" value="${esc(p.moneda || "COP")}" maxlength="3"></is-input>
         </div>
-        <div class="adm-fila">
-          <is-input name="stock" type="number" min="0" step="1" label="Stock" value="${p.stock ?? 0}"></is-input>
-          <is-input name="categoria" label="Categoría" value="${esc(p.categoria || "")}"></is-input>
+        <div class="adm-fila adm-fila-3">
+          <is-input full-width name="stock" type="number" min="0" step="1" label="Stock" value="${p.stock ?? 0}"></is-input>
+          <is-input full-width name="categoria" label="Categoría" value="${esc(p.categoria || "")}"></is-input>
           ${esNuevo ? "" : `<is-checkbox name="activo" ${p.activo ? "checked" : ""}>Activo</is-checkbox>`}
         </div>
-        <is-textarea name="descripcion" label="Descripción" rows="3"
+        <is-textarea full-width name="descripcion" label="Descripción" rows="3"
           value="${esc(p.descripcion || "")}"></is-textarea>
         <msl-imagen-input id="prod-img" label="Subir imágenes" entidad="producto" multiple
           ${p.id ? `entidad-id="${p.id}"` : ""}></msl-imagen-input>
-        <is-textarea name="imagenes" label="Imágenes (una URL por línea)" rows="3"
+        <is-textarea full-width name="imagenes" label="Imágenes (una URL por línea)" rows="3"
           value="${esc((p.imagenes || []).join("\n"))}"></is-textarea>
-        <is-textarea name="variaciones" label="Variaciones (JSON)" rows="6"
+        <is-textarea full-width name="variaciones" label="Variaciones (JSON)" rows="6"
           value="${esc(JSON.stringify(p.variaciones || {}, null, 2))}"></is-textarea>
-        <is-textarea name="meta" label="Meta (JSON)" rows="4"
+        <is-textarea full-width name="meta" label="Meta (JSON)" rows="4"
           value="${esc(JSON.stringify(p.meta || {}, null, 2))}"></is-textarea>
-        <div class="adm-fila">
+        <div class="adm-fila-acciones">
           <is-button type="submit"><is-icon icon="mdi:content-save"></is-icon> Guardar</is-button>
           <is-button type="button" variant="text" id="btn-cancelar-prod">Cancelar</is-button>
         </div>
@@ -365,12 +414,14 @@ function pintarFormProducto(p) {
 
 async function secPedidos() {
   $("#sec-cuerpo").innerHTML = `
-    <div class="adm-barra">
-      <is-select id="f-ped-estado" label="Estado" value="${esc(ui.pedEstado || "")}">
+    <div class="adm-barra adm-vidrio adm-barra-ped">
+      <is-select full-width id="f-ped-estado" label="Estado" value="${esc(ui.pedEstado || "")}">
         <is-option value="">Todos</is-option>
         ${ESTADOS_PEDIDO.map((s) => `<is-option value="${s}">${s}</is-option>`).join("")}
       </is-select>
-      <is-button id="btn-ped-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
+      <div class="adm-barra-acciones">
+        <is-button id="btn-ped-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
+      </div>
     </div>
     <div id="ped-lista"><is-spinner></is-spinner></div>`;
   $("#btn-ped-filtrar").addEventListener("click", () => {
@@ -390,27 +441,27 @@ async function cargarPedidos() {
     // Caché primero; se repinta solo si el servidor difiere.
     await MslCliente.pedidos.vivo(filtro, ({ results: pedidos }) => {
     if (!pedidos.length) {
-      lista.innerHTML = `<p class="adm-vacio">Sin pedidos con este filtro.</p>`;
+      lista.innerHTML = htmlVacio("mdi:receipt-text-outline", "Sin pedidos", "No hay pedidos con este estado.");
       return;
     }
     lista.innerHTML = pedidos.map((p) => `
       <div class="adm-pedido" data-codigo="${esc(p.codigo)}">
         <msl-pedido-card></msl-pedido-card>
-        <div class="adm-pedido-acciones">
-          <is-select data-campo="estado" label="Estado" value="${esc(p.estado || "")}">
+        <div class="adm-pedido-acciones adm-vidrio">
+          <is-select full-width data-campo="estado" label="Estado" value="${esc(p.estado || "")}">
             ${ESTADOS_PEDIDO.map((s) => `<is-option value="${s}">${s}</is-option>`).join("")}
           </is-select>
-          <is-select data-campo="canal" label="Canal" value="${esc(p.canal_pago || "")}">
+          <is-select full-width data-campo="canal" label="Canal" value="${esc(p.canal_pago || "")}">
             <is-option value="">—</is-option>
             ${["whatsapp", "wompi"].map((c) => `<is-option value="${c}">${c}</is-option>`).join("")}
           </is-select>
           <is-button data-x="guardar" variant="text"><is-icon icon="mdi:content-save"></is-icon> Estado</is-button>
-          <is-input data-campo="monto" type="number" min="0" step="any" label="Monto (pesos)"
+          <is-input full-width data-campo="monto" type="number" min="0" step="any" label="Monto (pesos)"
             value="${(p.total ?? 0) / 100}"></is-input>
-          <is-select data-campo="metodo" label="Método" value="${esc(METODOS_PAGO[0] || "")}">
+          <is-select full-width data-campo="metodo" label="Método" value="${esc(METODOS_PAGO[0] || "")}">
             ${METODOS_PAGO.map((m) => `<is-option value="${m}">${m}</is-option>`).join("")}
           </is-select>
-          <is-input data-campo="referencia" label="Referencia" placeholder="opcional"></is-input>
+          <is-input full-width data-campo="referencia" label="Referencia" placeholder="opcional"></is-input>
           <is-button data-x="pagar"><is-icon icon="mdi:cash-plus"></is-icon> Registrar pago</is-button>
           <div class="adm-ped-aviso"></div>
         </div>
@@ -456,17 +507,19 @@ async function cargarPedidos() {
 
 async function secPagos() {
   $("#sec-cuerpo").innerHTML = `
-    <div class="adm-barra">
-      <is-select id="f-pago-metodo" label="Método" value="${esc(ui.pago.metodo || "")}">
+    <div class="adm-barra adm-vidrio adm-barra-pag">
+      <is-select full-width id="f-pago-metodo" label="Método" value="${esc(ui.pago.metodo || "")}">
         <is-option value="">Todos</is-option>
         ${METODOS_PAGO.map((m) => `<is-option value="${m}">${m}</is-option>`).join("")}
       </is-select>
-      <is-select id="f-pago-estado" label="Estado" value="${esc(ui.pago.estado || "")}">
+      <is-select full-width id="f-pago-estado" label="Estado" value="${esc(ui.pago.estado || "")}">
         <is-option value="">Todos</is-option>
         ${["registrado", "confirmado", "rechazado"].map((s) =>
           `<is-option value="${s}">${s}</is-option>`).join("")}
       </is-select>
-      <is-button id="btn-pago-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
+      <div class="adm-barra-acciones">
+        <is-button id="btn-pago-filtrar"><is-icon icon="mdi:magnify"></is-icon> Filtrar</is-button>
+      </div>
     </div>
     <div id="pago-lista"><is-spinner></is-spinner></div>`;
   $("#btn-pago-filtrar").addEventListener("click", () => {
@@ -489,10 +542,11 @@ async function cargarPagos() {
     if (Object.keys(eq).length) filtro.eq = eq;
     await MslCliente.pagos.vivo(filtro, ({ results: pagos }) => {
     if (!pagos.length) {
-      lista.innerHTML = `<p class="adm-vacio">Sin pagos con este filtro.</p>`;
+      lista.innerHTML = htmlVacio("mdi:cash-off", "Sin pagos", "No hay cobros con este filtro.");
       return;
     }
     lista.innerHTML = `
+      <div class="adm-tabla-caja adm-vidrio">
       <table class="adm-tabla">
         <thead><tr>
           <th>ID</th><th>Pedido</th><th>Monto</th><th>Método</th>
@@ -510,7 +564,8 @@ async function cargarPagos() {
               <td>${esc((g.registrado_en || "").slice(0, 16).replace("T", " "))}</td>
             </tr>`).join("")}
         </tbody>
-      </table>`;
+      </table>
+      </div>`;
     }, { onError: (e) => mostrarError("#sec-aviso", e) });
   } catch (e) {
     lista.innerHTML = "";
@@ -536,7 +591,7 @@ async function secMetricas() {
       <msl-metrica-card icono="mdi:clock-alert" valor="${m.pedidos?.pendientes ?? 0}" etiqueta="Pendientes de pago"></msl-metrica-card>
       <msl-metrica-card icono="mdi:cash" valor="${dinero(m.ingresos_centavos)}" etiqueta="Ingresos"></msl-metrica-card>
     </div>
-    <div class="adm-card">
+    <div class="adm-card adm-vidrio">
       <h3>Conversión por canal</h3>
       <table class="adm-tabla">
         <thead><tr><th>Canal</th><th>Pedidos</th></tr></thead>
@@ -547,7 +602,7 @@ async function secMetricas() {
         </tbody>
       </table>
     </div>
-    <div class="adm-card">
+    <div class="adm-card adm-vidrio">
       <h3>Productos top (interés)</h3>
       <table class="adm-tabla">
         <thead><tr><th>Producto</th><th>Peso</th><th>Eventos</th></tr></thead>
@@ -566,69 +621,41 @@ async function secMetricas() {
 async function secApariencia() {
   const cfg = await MslCliente.config();
   $("#sec-cuerpo").innerHTML = `
-    <div class="adm-card">
+    <div class="adm-card adm-vidrio">
       <h3>Configuración del tenant</h3>
       <form class="adm-form" id="form-cfg">
         <div class="adm-fila">
-          <is-input name="nombre" label="Nombre" required value="${esc(cfg.nombre || "")}"></is-input>
-          <is-input name="whatsapp_soporte" type="tel" label="WhatsApp soporte"
+          <is-input full-width name="nombre" label="Nombre" required value="${esc(cfg.nombre || "")}"></is-input>
+          <is-input full-width name="whatsapp_soporte" type="tel" label="WhatsApp soporte"
             value="${esc(cfg.whatsapp_soporte || "")}" placeholder="573001112233"></is-input>
         </div>
-        <div class="adm-fila">
-          <is-input name="dns_personalizado" label="DNS personalizado"
+        <div class="adm-fila adm-fila-3">
+          <is-input full-width name="dns_personalizado" label="DNS personalizado"
             value="${esc(cfg.dns_personalizado || "")}" placeholder="mitienda.com"></is-input>
-          <is-input name="plantilla_activa" label="Plantilla activa"
+          <is-input full-width name="plantilla_activa" label="Plantilla activa"
             value="${esc(cfg.plantilla_activa || "catalogo")}"></is-input>
-          <is-input name="vigencia_suscripcion" type="date" label="Vigencia suscripción"
+          <is-input full-width name="vigencia_suscripcion" type="date" label="Vigencia suscripción"
             hint="La config pública no la expone: déjala vacía para no tocarla."></is-input>
         </div>
-        <div>
-          <p class="adm-leyenda">Variables CSS (tema del tenant)</p>
-          <div id="css-vars"></div>
-          <is-button type="button" variant="text" id="btn-add-var">
-            <is-icon icon="mdi:plus"></is-icon> Agregar variable</is-button>
-        </div>
-        <is-textarea name="meta" label="Meta (JSON)" rows="4"
+        <p class="adm-leyenda">El CSS de marca vive en la app (<code>css/app.css</code>), no en la API.</p>
+        <is-textarea full-width name="meta" label="Meta (JSON)" rows="4"
           value="${esc(JSON.stringify(cfg.meta || {}, null, 2))}"></is-textarea>
-        <div class="adm-fila">
+        <div class="adm-fila-acciones">
           <is-button type="submit"><is-icon icon="mdi:content-save"></is-icon> Guardar</is-button>
         </div>
         <div id="form-cfg-aviso"></div>
       </form>
     </div>`;
 
-  // Pares clave=valor de css_vars.
-  const vars = $("#css-vars");
-  const pintarPar = (k = "", v = "") => {
-    const fila = document.createElement("div");
-    fila.className = "adm-par";
-    fila.innerHTML = `
-      <is-input data-k placeholder="--primario" value="${esc(k)}" aria-label="Variable CSS"></is-input>
-      <is-input data-v placeholder="#6d28d9" value="${esc(v)}" aria-label="Valor"></is-input>
-      <is-button variant="text" type="button" data-quitar><is-icon icon="mdi:close"></is-icon></is-button>`;
-    fila.querySelector("[data-quitar]").addEventListener("click", () => fila.remove());
-    vars.appendChild(fila);
-  };
-  for (const [k, v] of Object.entries(cfg.css_vars || {})) pintarPar(k, v);
-  if (!vars.children.length) pintarPar();
-  $("#btn-add-var").addEventListener("click", () => pintarPar());
-
   $("#form-cfg").onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
     try {
-      const css_vars = {};
-      for (const fila of vars.querySelectorAll(".adm-par")) {
-        const k = fila.querySelector("[data-k]").value.trim();
-        const v = fila.querySelector("[data-v]").value.trim();
-        if (k) css_vars[k] = v;
-      }
       const datos = {
         nombre: f.nombre.value.trim(),
         whatsapp_soporte: f.whatsapp_soporte.value.trim() || null,
         dns_personalizado: f.dns_personalizado.value.trim() || null,
         plantilla_activa: f.plantilla_activa.value.trim() || "catalogo",
-        css_vars,
         meta: leerJson(f.meta.value, "meta"),
       };
       // Vigencia solo si el admin la escribe: la config pública no la devuelve.
