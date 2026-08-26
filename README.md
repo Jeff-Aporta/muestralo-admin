@@ -8,7 +8,7 @@ Panel de administración de cada tenant de **Muéstralo**. Front 100% estático 
 - Pedidos: cambio de estado, canal de pago y registro de pagos (monto, método, referencia).
 - Pagos: listado filtrable por método/estado.
 - Métricas del tenant: visitas, usuarios, pedidos, ingresos, conversión por canal, productos top.
-- Apariencia: `css_vars`, textos y plantilla del sitio público (tema en caliente tras guardar).
+- Apariencia: nombre, WhatsApp, DNS, plantilla y meta del tenant. El CSS de marca es local por app (`css/app.css`), no se edita aquí.
 
 ## Uso
 
