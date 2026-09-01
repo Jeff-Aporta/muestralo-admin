@@ -28,7 +28,7 @@ Las secciones del panel usan la variante `.vivo`: la tabla aparece con lo
 Las mutaciones (crear, editar, borrar, registrar pago) invalidan solas lo que
 tocaron, así que tras guardar se ve el dato nuevo, no el viejo.
 
-Contrato SSD local (gitignored): `specs/cache/spec.md`.
+Contrato caché: [`../specs/api/cache/spec.md`](../specs/api/cache/spec.md).
 
 ## Permisos: nada de roles quemados
 
@@ -112,7 +112,7 @@ módulo ESM**: `node --check` sobre un `.js` parsea como CommonJS y da falsos OK
 
 ## Ver también
 
-- `specs/` (gitignored) — contrato SSD local del agente.
+- [`../specs/`](../specs/README.md) — contrato SDD del ecosistema. Caché: [`../specs/api/cache/spec.md`](../specs/api/cache/spec.md).
 - `muestralo-app/LLM.md` — el kit completo y sus convenciones.
 - `muestralo-api/LLM.md` — endpoints y permisos SEG.
 - `GET /api/LLM.md` — documentación viva de la API.
